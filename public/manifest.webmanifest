@@ -1,0 +1,12 @@
+{
+  "name": "Calm World",
+  "short_name": "Calm World",
+  "description": "Calm, offline walkthrough lessons and photo routines.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#E8EDEE",
+  "theme_color": "#E8EDEE",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
