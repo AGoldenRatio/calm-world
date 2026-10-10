@@ -5,6 +5,7 @@ This repo is the **web prototype** from *Calm World: Refined Product Plan v1.1*:
 implementation that Phase 1 interviews and comprehension tests run on, on any tablet, today.
 The Expo app ports its lesson data and step engine one-to-one.
 
+- **Home menu**: opens on whichever child was last active, with just **Start** and **Parent settings**
 - **Six lessons** on one shared engine: Colors, Washing hands, Brushing teeth, Entering the classroom,
   Grocery store, Asking for help or a break
 - **Photo routines** built by a grown-up from 3 to 8 of their own photos, with three ways to move on:
@@ -24,7 +25,7 @@ npm run build      # static site in dist/, works from any host or sub-path
 npm run preview    # serve the production build (service worker on, so it works offline after first load)
 ```
 
-The grown-up check asks you to type a number from its word (for example "forty-seven" → `47`).
+Parent settings sit behind a grown-up check that asks you to type a number from its word (for example "forty-seven" → `47`).
 Three example profiles ship with the app: **Maple**, **River** and **Wren**, one per learner scenario.
 
 ## How it fits together
@@ -39,7 +40,7 @@ src/
   audio.ts             On-device speech and a generated soft water sound, only after a tap
   photos.ts            On-device resize (900 px routines, 360 px cards). Never uploaded
   app.ts               Renders the current view and routes actions through the engine
-  views/child.ts       Child Mode: home tiles, preview, steps, Break overlay, grown-up check
+  views/child.ts       Home menu, Child Mode tiles, preview, steps, Break overlay, grown-up check
   views/adult.ts       Adult Mode: profile, activities, photo routines, notes, privacy & data
 test/
   engine.test.ts       Lesson acceptance criteria against the pure engine

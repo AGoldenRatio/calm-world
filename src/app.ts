@@ -9,7 +9,7 @@ import type { AacKey } from './symbols';
 import type { Routine, Settings, Support } from './types';
 import { GATE_Q, resetView, view, type Tab } from './ui';
 import { OBSERVATIONS, adultView, draftReady } from './views/adult';
-import { childHome, childRun, gateView, overlayView } from './views/child';
+import { childHome, childRun, gateView, menuView, overlayView } from './views/child';
 
 const DRAFT_ID = '__draft';
 let root: HTMLElement;
@@ -20,7 +20,9 @@ export function render(): void {
   root.className = view.mode === 'child' ? `${s.contrast === 'high' ? 'hc' : ''} m-${reduce ? 'off' : s.motion} ${s.bigTargets ? 'big' : ''}` : '';
   root.innerHTML = view.mode === 'adult'
     ? adultView()
-    : (view.screen === 'run' && view.run ? childRun() : childHome()) + overlayView() + gateView();
+    : view.screen === 'menu'
+      ? menuView() + gateView()
+      : (view.screen === 'run' && view.run ? childRun() : childHome()) + overlayView() + gateView();
   if (view.gate) (document.getElementById('gateInput') as HTMLInputElement | null)?.focus();
 }
 
@@ -85,7 +87,9 @@ type Handler = (el: HTMLElement) => void;
 const num = (v: string | undefined) => Number(v);
 
 const A: Record<string, Handler> = {
-  // child home
+  // launch menu and child home
+  start: () => { view.screen = 'home'; view.homePage = 0; render(); },
+  menu: () => { view.screen = 'menu'; view.overlay = null; render(); },
   open: e => startRun(e.dataset.kind === 'lesson' ? 'lesson' : 'routine', e.dataset.id!),
   homePage: e => { view.homePage += num(e.dataset.d); render(); },
 
@@ -124,7 +128,7 @@ const A: Record<string, Handler> = {
   // grown-up check
   openGate: () => { view.gate = { q: Math.floor(Math.random() * GATE_Q.length), err: false }; render(); },
   closeGate: () => { view.gate = null; render(); },
-  toChild: () => { Object.assign(view, { mode: 'child', screen: 'home', run: null, draft: null, confirm: null, exp: null }); render(); },
+  toChild: () => { Object.assign(view, { mode: 'child', screen: 'menu', run: null, draft: null, confirm: null, exp: null }); render(); },
   tab: e => { view.tab = e.dataset.v as Tab; view.confirm = null; view.msg = null; render(); },
 
   // profiles

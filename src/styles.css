@@ -42,7 +42,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .f{fill:var(--sym-fill)} .f2{fill:var(--sym-fill2)} .n{fill:none} .soft{fill:var(--sym-soft)}
 .water{fill:var(--water)} .wood{fill:var(--wood)} .cr{fill:var(--red)} .cb{fill:var(--blue)} .cy{fill:var(--yellow)} .cg{fill:var(--green)}
 .c-red{fill:var(--red)} .c-blue{fill:var(--blue)} .c-yellow{fill:var(--yellow)} .c-green{fill:var(--green)}
-.mouth{fill:var(--mouth)} .pipe{stroke-width:16px} .faint{opacity:.35} .tile{fill:none;stroke:var(--sym-line);stroke-width:2px;opacity:.12}
+.mouth{fill:var(--mouth)} .pipe{stroke-width:16px} .faint{opacity:.35} .wall{fill:none;stroke:var(--sym-line);stroke-width:2px;opacity:.12}
 .board{fill:var(--accent-soft)} .towel{fill:var(--sym-soft)} .bag{fill:var(--blue)} .bubble{fill:var(--sym-fill);stroke-width:3px}
 .paste{fill:var(--sym-fill)} .belt{fill:var(--sym-line);opacity:.5} .crowd .l{opacity:.75} .mark{stroke:var(--accent);stroke-width:7px;fill:none;stroke-linecap:round}
 .ring{fill:none;stroke:var(--hi);stroke-width:7px;stroke-dasharray:2 16;stroke-linecap:round}
@@ -225,3 +225,15 @@ pre.exp{max-height:220px;overflow:auto;background:var(--paper);border:1px solid 
   .rstep{grid-template-columns:22px 80px minmax(0,1fr)}
   .rstep .ra{grid-column:1/-1;justify-content:flex-end}
 }
+
+/* ---------- launch menu: Start or Parent settings, nothing else ---------- */
+.menu{height:100%;display:flex;align-items:center;justify-content:center;padding-block:24px}
+.menu-panel{width:min(420px,100%);display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.menu-mark{width:88px;height:88px;border-radius:24px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center}
+.menu-mark svg{width:48px;height:48px}
+.menu h1{font:600 clamp(30px,5vw,42px)/1.1 var(--font-display);margin:0}
+.menu-who{font:500 20px/1.2 var(--font-display);color:var(--muted);margin:0 0 12px}
+.menu .btn{width:100%}
+.menu .menu-start{min-height:96px;font-size:28px}
+.menu .menu-start svg{width:34px;height:34px}
+.menu .menu-settings{min-height:64px;font-size:18px}

@@ -13,7 +13,7 @@ export const D = {
   floor: () => `<line class="l faint" x1="30" y1="350" x2="570" y2="350"/>`,
   tiles: () => {
     let s = '';
-    for (let x = 40; x < 560; x += 60) for (let y = 24; y < 230; y += 60) s += `<rect class="tile" x="${x}" y="${y}" width="56" height="56" rx="4"/>`;
+    for (let x = 40; x < 560; x += 60) for (let y = 24; y < 230; y += 60) s += `<rect class="wall" x="${x}" y="${y}" width="56" height="56" rx="4"/>`;
     return s;
   },
   window: (x: number, y: number) =>

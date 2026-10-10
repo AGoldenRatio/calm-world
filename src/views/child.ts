@@ -51,11 +51,23 @@ export function childHome(): string {
   const shown = all.slice(view.homePage * per, view.homePage * per + per);
   const tiles = shown.map(t =>
     `<button class="tile" data-a="open" data-kind="${t.kind}" data-id="${esc(t.id)}" aria-label="${esc(t.title)}"><div class="tv">${t.pic}</div><b>${s.captions ? esc(t.title) : ''}</b></button>`).join('');
-  return `<div class="child">${topbar(`<div class="where"><button class="btn quiet" data-a="openGate">Grown-ups</button><b>${esc(p.nickname)}</b></div>`)}
+  return `<div class="child">${topbar(`<div class="where"><button class="btn quiet" data-a="menu" aria-label="Menu">${ICON.home}<span>Menu</span></button><b>${esc(p.nickname)}</b></div>`)}
     <div class="strip"></div>
     <div class="tiles fade">${tiles || `<div class="center"><h1>No activities yet</h1><p>A grown-up can turn activities on in settings.</p></div>`}</div>
     <div class="rail"><div>${view.homePage > 0 ? `<button class="btn" data-a="homePage" data-d="-1">${ICON.back}<span class="lb">More</span></button>` : ''}</div><div></div>
       <div class="right">${view.homePage < pages - 1 ? `<button class="btn" data-a="homePage" data-d="1"><span class="lb">More</span>${ICON.next}</button>` : ''}</div></div></div>`;
+}
+
+/** Launch screen. Opens on whichever child was last active, with just two choices. */
+export function menuView(): string {
+  const p = activeProfile();
+  return `<div class="menu fade"><div class="menu-panel">
+    <div class="menu-mark" aria-hidden="true">${ICON.brk}</div>
+    <h1>Calm World</h1>
+    <p class="menu-who">${esc(p.nickname)}</p>
+    <button class="btn primary menu-start" data-a="start">${ICON.start}<span>Start</span></button>
+    <button class="btn menu-settings" data-a="openGate">${ICON.gear}<span>Parent settings</span></button>
+  </div></div>`;
 }
 
 export function childRun(): string {

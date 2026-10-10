@@ -18,7 +18,8 @@ export interface Draft {
 
 export interface ViewState {
   mode: 'child' | 'adult';
-  screen: 'home' | 'run';
+  /** menu: the launch screen (Start or Parent settings). home: the child's activity tiles. */
+  screen: 'menu' | 'home' | 'run';
   run: Run | null;
   /** The running preview came from the routine builder; return there afterwards. */
   fromDraft: boolean;
@@ -33,13 +34,13 @@ export interface ViewState {
 }
 
 export const view: ViewState = {
-  mode: 'child', screen: 'home', run: null, fromDraft: false, overlay: null, gate: null, tab: 'profiles',
+  mode: 'child', screen: 'menu', run: null, fromDraft: false, overlay: null, gate: null, tab: 'profiles',
   draft: null, confirm: null, exp: null, msg: null, homePage: 0,
 };
 
 export function resetView(): void {
   Object.assign(view, {
-    mode: 'child', screen: 'home', run: null, fromDraft: false, overlay: null, gate: null, tab: 'profiles',
+    mode: 'child', screen: 'menu', run: null, fromDraft: false, overlay: null, gate: null, tab: 'profiles',
     draft: null, confirm: null, exp: null, msg: null, homePage: 0,
   } satisfies ViewState);
 }
@@ -56,6 +57,8 @@ export const ICON = {
   again: '<svg viewBox="0 0 24 24"><path d="M5 12a7 7 0 1 0 2-5M5 4v4h4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   hear: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9q2 3 0 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
   brk: '<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>',
+  start: '<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
   home: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>',
 };
 

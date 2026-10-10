@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '../src/app';
 import { LESSONS } from '../src/content/lessons';
-import { STORAGE_KEY, activeProfile, store } from '../src/state';
+import { STORAGE_KEY, activeProfile, save, store } from '../src/state';
 import { GATE_Q, view } from '../src/ui';
 
 let el: HTMLElement;
@@ -31,6 +31,7 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="app"></div>';
   el = document.getElementById('app')!;
   mount(el);
+  click('[data-a="start"]');
 });
 
 describe('Child Mode interaction contract', () => {
@@ -109,7 +110,12 @@ describe('Child Mode interaction contract', () => {
 });
 
 describe('Grown-up check', () => {
+  it('is reached from the menu, not from the child\'s activity screen', () => {
+    expect($('[data-a="openGate"]')).toBeNull();
+  });
+
   it('guards settings and never traps the child', () => {
+    click('[data-a="menu"]');
     click('[data-a="openGate"]');
     const input = $('#gateInput') as HTMLInputElement;
     input.value = '0';
@@ -128,6 +134,7 @@ describe('Grown-up check', () => {
 
 describe('Adult controls', () => {
   const openAdult = () => {
+    click('[data-a="menu"]');
     click('[data-a="openGate"]');
     (document.getElementById('gateInput') as HTMLInputElement).value = String(GATE_Q[view.gate!.q][1]);
     $('form[data-form="gate"]')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -198,5 +205,49 @@ describe('Example profiles from the learner scenarios', () => {
     expect(river.lessons.find(l => l.id === 'grocery')!.opts.busy).toBe(true);
     expect(wren.settings).toMatchObject({ detail: 2, choices: 4, captions: false, contrast: 'high' });
     expect(store.S.routines.find(r => r.pid === maple.id)!.name).toBe('School drop-off');
+  });
+});
+
+describe('Home menu', () => {
+  beforeEach(() => mount(el));
+
+  it('opens on the menu with just Start and Parent settings', () => {
+    expect(view.screen).toBe('menu');
+    expect($$('[data-a]').map(b => b.dataset.a)).toEqual(['start', 'openGate']);
+    expect($('[data-a="start"]')!.textContent).toContain('Start');
+    expect($('[data-a="openGate"]')!.textContent).toContain('Parent settings');
+  });
+
+  it('opens on whichever child was last active', () => {
+    store.S.activeProfileId = store.S.profiles[1].id;
+    save();
+    mount(el);
+    expect($('.menu-who')!.textContent).toBe('River');
+    click('[data-a="start"]');
+    expect($('.where b')!.textContent).toBe('River');
+  });
+
+  it('Start opens the activities, and Menu returns here', () => {
+    click('[data-a="start"]');
+    expect($$('.tile').length).toBeGreaterThan(0);
+    click('[data-a="menu"]');
+    expect(view.screen).toBe('menu');
+  });
+
+  it('finishing an activity goes back to the activities, not the menu', () => {
+    click('[data-a="start"]');
+    click('.tile[data-id="help"]');
+    while (view.run!.phase === 'preview' || view.run!.phase === 'step') click('[data-a="next"]');
+    click('[data-a="home"]');
+    expect(view.screen).toBe('home');
+  });
+
+  it('returning from parent settings lands on the menu', () => {
+    click('[data-a="openGate"]');
+    (document.getElementById('gateInput') as HTMLInputElement).value = String(GATE_Q[view.gate!.q][1]);
+    $('form[data-form="gate"]')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    click('[data-a="toChild"]');
+    expect(view.mode).toBe('child');
+    expect(view.screen).toBe('menu');
   });
 });
