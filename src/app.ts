@@ -2,7 +2,7 @@
    Run actions go through the pure engine; its effects (log, speak, sound, exit) are applied here. */
 import { speak, waterSound } from './audio';
 import { lessonById } from './content/lessons';
-import { captionFor, currentStep, lessonRun, reduce, routineRun, type Action, type Effect } from './engine';
+import { captionFor, currentStep, lessonRun, reduce, routineRun, shouldAutoAdvance, startEffects, type Action, type Effect } from './engine';
 import { shrink } from './photos';
 import { activeProfile, activeSettings, emptyStore, load, logEvent, makeProfile, save, seed, store, uid } from './state';
 import type { AacKey } from './symbols';
@@ -28,21 +28,30 @@ export function render(): void {
 
 /* ---------- runs ---------- */
 
+/** How long the finished step stays on screen before moving on by itself. */
+export const AUTO_NEXT_MS = 1600;
+let autoTimer: ReturnType<typeof setTimeout> | undefined;
+const cancelAuto = () => { clearTimeout(autoTimer); autoTimer = undefined; };
+
+/** Open an activity straight on its first step. */
 function startRun(kind: 'lesson' | 'routine', id: string, preview = false): void {
+  cancelAuto();
   const p = activeProfile();
+  const seed = Math.floor(Math.random() * 2 ** 31);
   if (kind === 'lesson') {
     const lesson = lessonById(id);
     if (!lesson) return;
-    view.run = lessonRun(lesson, p.lessons.find(x => x.id === id), preview);
+    view.run = lessonRun(lesson, p.lessons.find(x => x.id === id), { preview, seed });
   } else {
     const r = store.S.routines.find(x => x.id === id);
     if (!r) return;
-    view.run = routineRun(r, preview);
+    view.run = routineRun(r, { preview, seed });
   }
   view.screen = 'run';
   view.mode = 'child';
   view.overlay = null;
   render();
+  applyEffects(startEffects(view.run));
 }
 
 function applyEffects(effects: Effect[]): void {
@@ -56,14 +65,24 @@ function applyEffects(effects: Effect[]): void {
 
 function dispatch(action: Action): void {
   if (!view.run) return;
-  const { run, effects } = reduce(view.run, action);
+  cancelAuto();
+  const before = view.run;
+  const { run, effects } = reduce(before, action);
   view.run = run;
   const exits = effects.some(e => e.type === 'exit');
   if (!exits) render();
   applyEffects(effects);
+  // Once the child has done the step, move on by itself after a short pause (a grown-up can turn this off).
+  if (!exits && activeSettings().autoNext && shouldAutoAdvance(before, run, action)) {
+    autoTimer = setTimeout(() => {
+      autoTimer = undefined;
+      if (view.run === run && !view.overlay && view.mode === 'child') dispatch({ type: 'next' });
+    }, AUTO_NEXT_MS);
+  }
 }
 
 function goHome(): void {
+  cancelAuto();
   if (view.run?.preview) return endPreview();
   view.run = null;
   view.screen = 'home';
@@ -90,6 +109,12 @@ const A: Record<string, Handler> = {
   // launch menu and child home
   start: () => { view.screen = 'home'; view.homePage = 0; render(); },
   menu: () => { view.screen = 'menu'; view.overlay = null; render(); },
+  level: e => {
+    const cfg = activeProfile().lessons.find(x => x.id === e.dataset.v);
+    if (cfg) cfg.level = Number(e.dataset.l) as 1 | 2 | 3;
+    save();
+    render();
+  },
   open: e => startRun(e.dataset.kind === 'lesson' ? 'lesson' : 'routine', e.dataset.id!),
   homePage: e => { view.homePage += num(e.dataset.d); render(); },
 
@@ -101,14 +126,12 @@ const A: Record<string, Handler> = {
   pick: e => dispatch({ type: 'pick', value: e.dataset.v! }),
   pickAac: e => dispatch({ type: 'aac', value: e.dataset.v as AacKey }),
   again: () => dispatch({ type: 'again' }),
-  finish: () => dispatch({ type: 'finish' }),
-  setBusy: e => dispatch({ type: 'setBusy', busy: e.dataset.v === 'busy' }),
   hear: () => { const st = view.run && currentStep(view.run); if (st) speak(captionFor(st, view.run!)); },
   home: () => goHome(),
   endPreview: () => endPreview(),
 
   // Break overlay: outside the loop, returns to where the child was, or home
-  openBreak: () => { view.overlay = 'menu'; render(); },
+  openBreak: () => { cancelAuto(); view.overlay = 'menu'; render(); },
   aac: e => {
     const k = e.dataset.v as AacKey;
     const ref = view.run ? view.run.id : 'home';

@@ -9,7 +9,7 @@ img{max-width:100%}
   --accent:#23626C; --accent-ink:#FFFFFF; --accent-soft:#D2E4E5;
   --break:#8A5A33; --break-soft:#F2E4D6;
   --stage:#FBFBF8; --sym-line:#24343B; --sym-fill:#FFFFFF; --sym-fill2:#DDE4E6; --sym-soft:#C9D9DC;
-  --water:#6FAAD0; --wood:#CFAE84; --red:#C63F38; --blue:#2E60B0; --yellow:#E6B52A; --green:#3C874D; --mouth:#7A3B3B;
+  --water:#6FAAD0; --wood:#CFAE84; --red:#C63F38; --blue:#2E60B0; --yellow:#E6B52A; --green:#3C874D; --orange:#E07A2E; --mouth:#7A3B3B;
   --hi:#23626C; --sw:5px;
   --font-display:"Lexend","Atkinson Hyperlegible",system-ui,sans-serif;
   --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -40,7 +40,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* ---------- symbols ---------- */
 .l{stroke:var(--sym-line);stroke-width:var(--sw);stroke-linejoin:round;stroke-linecap:round}
 .f{fill:var(--sym-fill)} .f2{fill:var(--sym-fill2)} .n{fill:none} .soft{fill:var(--sym-soft)}
-.water{fill:var(--water)} .wood{fill:var(--wood)} .cr{fill:var(--red)} .cb{fill:var(--blue)} .cy{fill:var(--yellow)} .cg{fill:var(--green)}
+.water{fill:var(--water)} .wood{fill:var(--wood)} .cr{fill:var(--red)} .cb{fill:var(--blue)} .cy{fill:var(--yellow)} .cg{fill:var(--green)} .co{fill:var(--orange)}
+.grain{fill:none;stroke:var(--sym-line);stroke-width:2px;opacity:.3}
 .c-red{fill:var(--red)} .c-blue{fill:var(--blue)} .c-yellow{fill:var(--yellow)} .c-green{fill:var(--green)}
 .mouth{fill:var(--mouth)} .pipe{stroke-width:16px} .faint{opacity:.35} .wall{fill:none;stroke:var(--sym-line);stroke-width:2px;opacity:.12}
 .board{fill:var(--accent-soft)} .towel{fill:var(--sym-soft)} .bag{fill:var(--blue)} .bubble{fill:var(--sym-fill);stroke-width:3px}
@@ -237,3 +238,36 @@ pre.exp{max-height:220px;overflow:auto;background:var(--paper);border:1px solid 
 .menu .menu-start{min-height:96px;font-size:28px}
 .menu .menu-start svg{width:34px;height:34px}
 .menu .menu-settings{min-height:64px;font-size:18px}
+
+/* ---------- activity panel: shopping list, basket, block picture ---------- */
+.hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%;max-width:960px}
+.hud-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:6px 10px;min-height:56px}
+.hud-label{font:600 15px/1 var(--font-display);color:var(--muted);display:flex;align-items:center;gap:6px}
+.hud-label svg{width:22px;height:22px}
+.hud-item{display:inline-flex;align-items:center;gap:6px;font:500 16px/1 var(--font-display);padding:4px 8px 4px 4px;border-radius:10px;border:2px solid transparent}
+.hud-item svg{width:44px;height:30px;display:block}
+.hud-item.got{background:var(--accent-soft);border-color:var(--hi)}
+.hud-item.new{border-color:var(--hi);border-width:3px}
+.hud-item .tick{width:18px;height:18px}
+.hud-empty{color:var(--muted);font-size:15px}
+.hud-pattern svg{width:90px;height:90px}
+.stage.collect{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:stretch}
+.collect .col-left{display:flex;flex-direction:column;align-items:center;gap:12px;min-height:0}
+.collect .col-left .picwrap{flex:1 1 auto}
+.collect .col-right{display:flex;min-height:0}
+.collect .opts{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);height:100%;max-width:none}
+.collect .opt{min-height:0}
+.collect .opt span{font-size:19px}
+.collect .hud-pattern svg{width:120px;height:120px}
+@media (max-width:820px){
+  .stage.collect{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+  .collect .col-right{min-height:180px}
+  .collect .opts{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+.opt.picked .ov{opacity:.55}
+.donebar{display:flex;flex-direction:column;align-items:center;gap:18px}
+.upnext{display:flex;align-items:center;gap:12px}
+.upnext .tv{width:84px;aspect-ratio:3/2;border-radius:10px;overflow:hidden;background:var(--stage);border:2px solid var(--line)}
+.upnext .tv svg,.upnext .tv img{width:100%;height:100%;object-fit:cover;display:block}
+.lvl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lvl small{color:var(--muted)}

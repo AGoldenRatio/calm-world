@@ -1,6 +1,6 @@
 /* Child Mode interaction contract, checked against the real rendered app in jsdom. */
-import { beforeEach, describe, expect, it } from 'vitest';
-import { mount } from '../src/app';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AUTO_NEXT_MS, mount } from '../src/app';
 import { LESSONS } from '../src/content/lessons';
 import { STORAGE_KEY, activeProfile, save, store } from '../src/state';
 import { GATE_Q, view } from '../src/ui';
@@ -41,9 +41,10 @@ describe('Child Mode interaction contract', () => {
     click('[data-a="openBreak"]'); // re-render as River
     click('[data-a="closeOverlay"]');
     click(`.tile[data-id="${id}"]`);
-    expectChildRules();
-    expect($('h1')!.textContent).toContain('What we will do');
-    click('[data-a="next"]');
+    // straight into the first step: no "What we will do" screen in between
+    expect(view.run!.phase).toBe('step');
+    expect(view.run!.i).toBe(0);
+    expect(el.textContent).not.toContain('What we will do');
     for (let guard = 0; guard < 20 && view.run?.phase === 'step'; guard++) {
       expectChildRules();
       // controls keep their place: Back left, Again middle, Next right
@@ -55,12 +56,12 @@ describe('Child Mode interaction contract', () => {
     expect(view.run?.phase).toBe('complete');
     expect($('h1')!.textContent).toMatch(/^All done/);
     expectChildRules();
-    expect($$('[data-a="again"], [data-a="home"], [data-a="finish"]')).toHaveLength(3);
+    expect($$('[data-a="again"], [data-a="home"]')).toHaveLength(2);
+    expect($('[data-a="finish"]')).toBeNull();
   });
 
   it('Break opens Help, Break, No and All done from a step, and returns to the same step', () => {
     click('.tile[data-id="colors"]');
-    click('[data-a="next"]');
     click('[data-a="next"]');
     const i = view.run!.i;
     click('[data-a="openBreak"]');
@@ -88,7 +89,6 @@ describe('Child Mode interaction contract', () => {
   it('words can be turned off without losing the pictures', () => {
     activeProfile().settings.captions = false;
     click('.tile[data-id="hands"]');
-    click('[data-a="next"]');
     expect($('.cap')!.textContent).toBe('');
     expect($('.pic svg')).not.toBeNull();
   });
@@ -176,7 +176,7 @@ describe('Adult controls', () => {
     openAdult();
     click('[data-a="previewLesson"][data-v="hands"]');
     expect(view.run!.preview).toBe(true);
-    while (view.run!.phase === 'preview' || view.run!.phase === 'step') click('[data-a="next"]');
+    while (view.run!.phase === 'step') click('[data-a="next"]');
     expect(view.run!.phase).toBe('complete');
     expect(store.S.events.length).toBe(before);
     click('[data-a="endPreview"]');
@@ -199,11 +199,14 @@ describe('Example profiles from the learner scenarios', () => {
   it('ships Maple, River and Wren with the settings each scenario tests', () => {
     const [maple, river, wren] = store.S.profiles;
     expect(maple.nickname).toBe('Maple');
-    expect(maple.settings).toMatchObject({ detail: 0, choices: 2, narration: false, motion: 'off' });
+    expect(maple.settings).toMatchObject({ detail: 0, narration: false, motion: 'off' });
+    expect(maple.lessons.every(l => l.level === 1)).toBe(true);
     expect(maple.lessons.find(l => l.id === 'hands')!.steps).toEqual(['water', 'soap', 'rinse', 'dry']);
-    expect(river.settings).toMatchObject({ detail: 1, choices: 3, narration: true, motion: 'gentle' });
+    expect(river.settings).toMatchObject({ detail: 1, narration: true, motion: 'gentle' });
+    expect(river.lessons.every(l => l.level === 2)).toBe(true);
     expect(river.lessons.find(l => l.id === 'grocery')!.opts.busy).toBe(true);
-    expect(wren.settings).toMatchObject({ detail: 2, choices: 4, captions: false, contrast: 'high' });
+    expect(wren.settings).toMatchObject({ detail: 2, captions: false, contrast: 'high' });
+    expect(wren.lessons.every(l => l.level === 3)).toBe(true);
     expect(store.S.routines.find(r => r.pid === maple.id)!.name).toBe('School drop-off');
   });
 });
@@ -237,7 +240,7 @@ describe('Home menu', () => {
   it('finishing an activity goes back to the activities, not the menu', () => {
     click('[data-a="start"]');
     click('.tile[data-id="help"]');
-    while (view.run!.phase === 'preview' || view.run!.phase === 'step') click('[data-a="next"]');
+    while (view.run!.phase === 'step') click('[data-a="next"]');
     click('[data-a="home"]');
     expect(view.screen).toBe('home');
   });
@@ -249,5 +252,113 @@ describe('Home menu', () => {
     click('[data-a="toChild"]');
     expect(view.mode).toBe('child');
     expect(view.screen).toBe('menu');
+  });
+});
+
+describe('Natural flow', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('moves on by itself a moment after the child does the step', () => {
+    vi.useFakeTimers();
+    click('.tile[data-id="hands"]');
+    const i = view.run!.i;
+    click('[data-a="tap"]');
+    expect(view.run!.i).toBe(i); // the done picture stays up first
+    vi.advanceTimersByTime(AUTO_NEXT_MS);
+    expect(view.run!.i).toBe(i + 1);
+  });
+
+  it('never moves on before the child acts', () => {
+    vi.useFakeTimers();
+    click('.tile[data-id="hands"]');
+    vi.advanceTimersByTime(AUTO_NEXT_MS * 5);
+    expect(view.run!.i).toBe(0);
+  });
+
+  it('waits for Next when a grown-up turned moving on off', () => {
+    vi.useFakeTimers();
+    activeProfile().settings.autoNext = false;
+    click('.tile[data-id="hands"]');
+    click('[data-a="tap"]');
+    vi.advanceTimersByTime(AUTO_NEXT_MS * 2);
+    expect(view.run!.i).toBe(0);
+  });
+
+  it('does not move on while the Break overlay is open', () => {
+    vi.useFakeTimers();
+    click('.tile[data-id="hands"]');
+    click('[data-a="tap"]');
+    click('[data-a="openBreak"]');
+    vi.advanceTimersByTime(AUTO_NEXT_MS * 2);
+    expect(view.run!.i).toBe(0);
+  });
+
+  it('the end screen offers the next activity directly', () => {
+    click('.tile[data-id="colors"]');
+    while (view.run!.phase === 'step') click('[data-a="next"]');
+    const next = $('[data-a="open"].upnext');
+    expect(next).not.toBeNull();
+    expect(next!.dataset.id).toBe('hands');
+    next!.click();
+    expect(view.run!.id).toBe('hands');
+    expect(view.run!.i).toBe(0);
+  });
+});
+
+describe('Shopping shows what was picked', () => {
+  it('the basket panel lists each thing as it is picked', () => {
+    activeProfile().lessons.find(l => l.id === 'grocery')!.steps = ['shop'];
+    click('.tile[data-id="grocery"]');
+    expect($('.hud [aria-label="In your basket"]')!.textContent).toContain('Empty');
+    const first = $$('.opt[data-a="pick"]')[0];
+    const name = first.getAttribute('aria-label')!;
+    first.click();
+    const basket = $('.hud [aria-label="In your basket"]')!;
+    expect(basket.textContent).toContain(name);
+    expect(basket.querySelector('.hud-item.new')).not.toBeNull();
+    expect($('.cap')!.textContent).toContain(name);
+    expect($(`.opt[aria-label="${name}"]`)!.classList.contains('picked')).toBe(true);
+  });
+
+  it('at Medium the shopping list is shown and ticks off', () => {
+    const cfg = activeProfile().lessons.find(l => l.id === 'grocery')!;
+    cfg.level = 2;
+    cfg.steps = ['shop'];
+    click('.tile[data-id="grocery"]');
+    const list = view.run!.ctx.list!;
+    expect($('.hud [aria-label="Shopping list"]')).not.toBeNull();
+    click(`.opt[data-v="${list[0]}"]`);
+    expect($$('.hud [aria-label="Shopping list"] .hud-item.got')).toHaveLength(1);
+  });
+});
+
+describe('Difficulty is set per activity', () => {
+  it('a grown-up picks Easy, Medium or Hard, and the child sees it', () => {
+    click('[data-a="menu"]');
+    click('[data-a="openGate"]');
+    (document.getElementById('gateInput') as HTMLInputElement).value = String(GATE_Q[view.gate!.q][1]);
+    $('form[data-form="gate"]')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    click('[data-a="tab"][data-v="lessons"]');
+    expect($$('[data-a="level"][data-v="blocks"]').map(b => b.textContent)).toEqual(['Easy', 'Medium', 'Hard']);
+    click('[data-a="level"][data-v="blocks"][data-l="3"]');
+    expect(activeProfile().lessons.find(l => l.id === 'blocks')!.level).toBe(3);
+    expect($('[data-a="level"][data-v="blocks"][data-l="3"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).profiles[0].lessons.find((l: { id: string }) => l.id === 'blocks').level).toBe(3);
+    click('[data-a="previewLesson"][data-v="blocks"]');
+    click('[data-a="next"]');
+    expect(view.run!.ctx.pattern).toHaveLength(5);
+    expect($('.hud-pattern')).not.toBeNull();
+  });
+
+  it('older saved profiles keep their "choices at once" as a difficulty', async () => {
+    const { migrate, seed } = await import('../src/state');
+    const old = seed();
+    const p = old.profiles[0] as unknown as { settings: Record<string, unknown>; lessons: Record<string, unknown>[] };
+    p.settings.choices = 4;
+    for (const l of p.lessons) delete l.level;
+    const out = migrate(old);
+    expect(out.profiles[0].lessons.every(l => l.level === 3)).toBe(true);
+    expect('choices' in out.profiles[0].settings).toBe(false);
+    expect(out.profiles[0].settings.autoNext).toBe(true);
   });
 });

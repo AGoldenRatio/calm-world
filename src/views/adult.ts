@@ -8,6 +8,12 @@ import { aacPic } from './child';
 
 const TABS: [Tab, string][] = [['profiles', 'Child profile'], ['lessons', 'Activities'], ['routines', 'Photo routines'], ['notes', 'Notes'], ['privacy', 'Privacy & data']];
 export const OBSERVATIONS = ['recognized item', 'followed sequence', 'requested break', 'used help', 'said no', 'stopped early'];
+const LEVEL_NAMES = ['Easy', 'Medium', 'Hard'];
+/** The difficulty most of a child's activities are at, for the profile card. */
+const mainLevel = (p: Profile) => {
+  const n = [1, 2, 3].map(l => p.lessons.filter(x => x.level === l).length);
+  return n.indexOf(Math.max(...n)) + 1;
+};
 const INTERACTION_LABEL = { tap: 'Tap to continue', choose2: 'Choose what comes next', match: 'Find the same picture' };
 
 export function adultView(): string {
@@ -31,7 +37,7 @@ function tabProfiles(p: Profile): string {
   const s = p.settings, S = store.S;
   const prev = svgWrap(BG('bath', s.detail) + lessonById('hands')!.steps[1].draw(s.detail, { done: true }));
   return `<div><h2>Child profile</h2><p class="lede">Each child gets their own sensory, display and communication settings. Changes apply before the next activity starts. Use a nickname, not a full name.</p></div>
-  <div class="plist">${S.profiles.map(x => `<button class="pcard" data-a="pickProfile" data-v="${esc(x.id)}" aria-pressed="${x.id === p.id}"><b>${esc(x.nickname)} ${x.example ? '<span class="tag ex">Example</span>' : ''}</b><small>${['Minimal', 'Moderate', 'Detailed'][x.settings.detail]} picture · ${x.settings.choices} choices · sound ${x.settings.narration || x.settings.envAudio ? 'on' : 'off'}</small></button>`).join('')}
+  <div class="plist">${S.profiles.map(x => `<button class="pcard" data-a="pickProfile" data-v="${esc(x.id)}" aria-pressed="${x.id === p.id}"><b>${esc(x.nickname)} ${x.example ? '<span class="tag ex">Example</span>' : ''}</b><small>${['Minimal', 'Moderate', 'Detailed'][x.settings.detail]} picture · ${LEVEL_NAMES[mainLevel(x) - 1]} · sound ${x.settings.narration || x.settings.envAudio ? 'on' : 'off'}</small></button>`).join('')}
     <button class="pcard" data-a="addProfile" aria-pressed="false"><b>+ Add a child</b><small>Starts with calm defaults</small></button></div>
   <div class="split"><div style="display:flex;flex-direction:column;gap:16px">
     <section class="group"><header><h3>Name</h3></header>
@@ -46,8 +52,8 @@ function tabProfiles(p: Profile): string {
       <div class="field"><span>Contrast</span>${seg('contrast', [['standard', 'Standard'], ['high', 'High']], s.contrast)}</div>
       <div class="field"><span>Movement</span>${seg('motion', [['off', 'Off'], ['gentle', 'Gentle fades'], ['more', 'More motion']], s.motion)}<small>The device's reduce-motion setting always wins.</small></div>
       <div class="field"><span>Larger buttons</span>${tog('bigTargets', s.bigTargets, s.bigTargets ? 'On' : 'Off')}</div></section>
-    <section class="group"><header><h3>Choices and words</h3></header>
-      <div class="field"><span>Choices at once</span>${seg('choices', [[2, '2'], [3, '3'], [4, '4']], s.choices, true)}</div>
+    <section class="group"><header><h3>Pace and words</h3><small style="color:var(--muted)">Difficulty is set for each activity under Activities.</small></header>
+      <div class="field"><span>Move on after each step</span>${tog('autoNext', s.autoNext, s.autoNext ? 'By itself, after a short pause' : 'Wait for Next')}<small>Next always works either way. Nothing moves on until the child has done the step.</small></div>
       <div class="field"><span>Show words</span>${tog('captions', s.captions, s.captions ? 'On' : 'Off')}<small>Turn off for children who don't read yet. Pictures carry every step either way.</small></div>
       <div class="field"><span>Step strip</span>${tog('schedule', s.schedule, s.schedule ? 'On' : 'Off')}<small>The row of small pictures that shows where the child is in the activity.</small></div></section>
     <section class="group"><header><h3>Communication cards</h3><small style="color:var(--muted)">Swap in the symbols this child already uses with their AAC system.</small></header>
@@ -77,12 +83,13 @@ function tabLessons(p: Profile): string {
       <div class="ord"><button class="abtn sm" data-a="move" data-v="${idx}" data-d="-1" ${idx === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button class="abtn sm" data-a="move" data-v="${idx}" data-d="1" ${idx === p.lessons.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></div>
       <div class="th">${svgWrap(l.icon(), 'mini')}</div>
       <div class="body"><h3>${l.title}</h3>
-        <div class="stepchips" aria-label="Steps">${l.steps.map(st => `<button data-a="stepTog" data-v="${l.id}" data-k="${st.k}" aria-pressed="${keep.includes(st.k)}">${st.title}</button>`).join('')}</div>
+        <div class="stepchips" aria-label="Steps">${l.steps.filter(st => !st.requires && (!st.minLevel || cfg.level >= st.minLevel)).map(st => `<button data-a="stepTog" data-v="${l.id}" data-k="${st.k}" aria-pressed="${keep.includes(st.k)}">${st.title}</button>`).join('')}</div>
+        ${l.levels ? `<div class="lvl"><span class="seg" role="group" aria-label="Difficulty">${LEVEL_NAMES.map((n, i) => `<button type="button" data-a="level" data-v="${l.id}" data-l="${i + 1}" aria-pressed="${cfg.level === i + 1}">${n}</button>`).join('')}</span><small>${esc(l.levels[cfg.level - 1])}</small></div>` : ''}
         ${opt}
         <div class="row" style="justify-content:flex-start;gap:8px">${l.short ? `<button class="abtn sm" data-a="shortVer" data-v="${l.id}">Short version</button>` : ''}<button class="abtn sm" data-a="allSteps" data-v="${l.id}">All steps</button></div></div>
       <div class="acts">${tog('on:' + l.id, cfg.on, cfg.on ? 'Shown' : 'Hidden')}<button class="abtn sm" data-a="previewLesson" data-v="${l.id}">Preview</button></div></div>`;
   }).join('');
-  return `<div><h2>Activities for ${esc(p.nickname)}</h2><p class="lede">Turn activities on or off, set their order on the home screen, and choose which steps to show. A step that is crossed out is skipped.</p></div><div style="display:flex;flex-direction:column;gap:12px">${rows}</div>`;
+  return `<div><h2>Activities for ${esc(p.nickname)}</h2><p class="lede">Turn activities on or off, set their order on the home screen, set how hard each one is, and choose which steps to show. A step that is crossed out is skipped.</p></div><div style="display:flex;flex-direction:column;gap:12px">${rows}</div>`;
 }
 
 function tabRoutines(p: Profile): string {

@@ -6,8 +6,18 @@ implementation that Phase 1 interviews and comprehension tests run on, on any ta
 The Expo app ports its lesson data and step engine one-to-one.
 
 - **Home menu**: opens on whichever child was last active, with just **Start** and **Parent settings**
-- **Six lessons** on one shared engine: Colors, Washing hands, Brushing teeth, Entering the classroom,
-  Grocery store, Asking for help or a break
+- **Seven activities** on one shared engine: Colors, Washing hands, Brushing teeth, Entering the classroom,
+  Grocery store, Wood blocks, Asking for help or a break
+- **Straight in, natural flow**: a tile opens the first step directly. Once the child has done a step it moves
+  on by itself after a short pause (a grown-up can switch this to "Wait for Next"), and the end screen offers
+  **Up next** to go straight to the following activity
+- **Difficulty per activity**, set by a grown-up: Easy, Medium or Hard. Harder levels show more options, turn
+  tap steps into "Which one is…?" questions, and set bigger tasks. Options are shuffled every time for variety
+- **Grocery store simulation**: choose a quiet or busy store (when allowed), get a basket, read a picture
+  shopping list, pick things off the shelf, put them on the checkout belt, pay with a card, bag them and leave.
+  A list and basket panel shows what has been picked at every step
+- **Wood blocks**: open the box, build a tower (Easy) or copy a picture of 3 or 5 colored blocks (Medium, Hard),
+  then tidy up
 - **Photo routines** built by a grown-up from 3 to 8 of their own photos, with three ways to move on:
   tap, choose what comes next, find the same picture
 - **Per-child sensory profiles**, all defaulting to the quietest option, and swappable communication cards
@@ -49,7 +59,10 @@ docs/
   interaction-contract.md
 ```
 
-Steps are data, not code. A step has one of four types (`tap`, `choose`, `communicate` as `aac`, `next`),
+Steps are data, not code. A step has one of five types (`tap`, `choose`, `collect`, `communicate` as `aac`, `next`).
+`collect` steps take several taps in turn (items into a basket, blocks onto a tower). A step can have harder
+`variants` and a `minLevel`, and a lesson can draw per-run content in `setup` (a shopping list, a block picture).
+Each step has
 a caption, an optional done-caption and a `draw(detail, ctx)` function. Photo routines are converted to the
 same step shape (`routineSteps`), so every rule in the interaction contract applies to them too.
 

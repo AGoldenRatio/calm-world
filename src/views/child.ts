@@ -1,7 +1,7 @@
 /* Child Mode: top bar with Break, the step strip, one picture, and a fixed control rail.
    Back bottom left, Again bottom center, Next bottom right. Next is never disabled. */
 import { lessonById } from '../content/lessons';
-import { captionFor, choiceOptions, currentStep, type Run } from '../engine';
+import { captionFor, currentStep, stepOptions, type Run } from '../engine';
 import { activeProfile, store } from '../state';
 import { AAC, AAC_KEYS, BG, D, svgWrap, type AacKey, type Detail } from '../symbols';
 import type { Step } from '../types';
@@ -34,10 +34,11 @@ function topbar(left: string): string {
     <button class="btn brk" data-a="openBreak" aria-label="Break, help, no, or all done">${ICON.brk}<span>Break</span></button></div></div>`;
 }
 
-interface TileItem { kind: 'lesson' | 'routine'; id: string; title: string; pic: string }
+export interface TileItem { kind: 'lesson' | 'routine'; id: string; title: string; pic: string }
 
-export function childHome(): string {
-  const p = activeProfile(), s = p.settings;
+/** The child's activities in home-screen order: lessons first, then photo routines. */
+export function homeItems(): TileItem[] {
+  const p = activeProfile();
   const lessons: TileItem[] = p.lessons.filter(x => x.on && lessonById(x.id)).map(x => {
     const l = lessonById(x.id)!;
     return { kind: 'lesson', id: x.id, title: l.title, pic: svgWrap(l.icon(), 'mini') };
@@ -45,13 +46,25 @@ export function childHome(): string {
   const routines: TileItem[] = store.S.routines
     .filter(r => r.pid === p.id && r.on && r.steps.length)
     .map(r => ({ kind: 'routine', id: r.id, title: r.name, pic: `<img src="${safeImg(r.steps[0].img)}" alt="">` }));
-  const all = [...lessons, ...routines];
-  const per = 6, pages = Math.max(1, Math.ceil(all.length / per));
+  return [...lessons, ...routines];
+}
+
+/** The activity after this one on the home screen, so the child can go straight on. */
+export function upNext(id: string): TileItem | undefined {
+  const all = homeItems();
+  const i = all.findIndex(t => t.id === id);
+  return i >= 0 && i < all.length - 1 ? all[i + 1] : undefined;
+}
+
+export function childHome(): string {
+  const s = activeProfile().settings;
+  const all = homeItems();
+  const per = 8, pages = Math.max(1, Math.ceil(all.length / per));
   view.homePage = Math.max(0, Math.min(view.homePage, pages - 1));
   const shown = all.slice(view.homePage * per, view.homePage * per + per);
   const tiles = shown.map(t =>
     `<button class="tile" data-a="open" data-kind="${t.kind}" data-id="${esc(t.id)}" aria-label="${esc(t.title)}"><div class="tv">${t.pic}</div><b>${s.captions ? esc(t.title) : ''}</b></button>`).join('');
-  return `<div class="child">${topbar(`<div class="where"><button class="btn quiet" data-a="menu" aria-label="Menu">${ICON.home}<span>Menu</span></button><b>${esc(p.nickname)}</b></div>`)}
+  return `<div class="child">${topbar(`<div class="where"><button class="btn quiet" data-a="menu" aria-label="Menu">${ICON.home}<span>Menu</span></button><b>${esc(activeProfile().nickname)}</b></div>`)}
     <div class="strip"></div>
     <div class="tiles fade">${tiles || `<div class="center"><h1>No activities yet</h1><p>A grown-up can turn activities on in settings.</p></div>`}</div>
     <div class="rail"><div>${view.homePage > 0 ? `<button class="btn" data-a="homePage" data-d="-1">${ICON.back}<span class="lb">More</span></button>` : ''}</div><div></div>
@@ -70,57 +83,61 @@ export function menuView(): string {
   </div></div>`;
 }
 
+function completeView(r: Run, where: string): string {
+  const s = activeProfile().settings;
+  const next = r.preview ? undefined : upNext(r.id);
+  const nextBtn = next
+    ? `<button class="btn primary upnext" data-a="open" data-kind="${next.kind}" data-id="${esc(next.id)}" aria-label="Up next: ${esc(next.title)}"><span class="tv">${next.pic}</span><span>${s.captions ? 'Up next' : ''}</span>${ICON.next}</button>`
+    : '';
+  return `<div class="child">${topbar(where)}<div class="strip"></div>
+    <div class="center fade donebar"><div class="bigpic">${svgWrap(D.doneBox())}</div><h1>All done.</h1>
+      <div class="row"><button class="btn" data-a="again">${ICON.again}<span>Again</span></button><button class="btn" data-a="home">${ICON.home}<span>Home</span></button>${nextBtn}</div></div>
+    <div class="rail"></div></div>`;
+}
+
+function optionButtons(st: Step, r: Run, captions: boolean): string {
+  const pool = stepOptions(r, st);
+  if (!pool.length) return '';
+  const col = st.collect;
+  return `<div class="opts" style="--n:${pool.length}">${pool.map(v => {
+    const pic = st.photoOpts ? `<img src="${safeImg(st.photoOpts[v])}" alt="">` : svgWrap(st.optDraw!(v));
+    const used = col?.used?.(v, r.ctx);
+    const picked = used || (r.done && !col && ((st.store && r.ctx[st.store] === v) || st.target === v || r.last === v));
+    const want = st.target ?? col?.want?.(r.ctx);
+    const cls = picked ? 'picked' : r.wrong != null && want === v ? 'hint' : '';
+    const lab = st.optLabel ? st.optLabel(v) : '';
+    return `<button class="opt ${cls}" data-a="pick" data-v="${esc(v)}" aria-label="${esc(lab || 'picture')}" ${used ? 'aria-pressed="true"' : ''}><div class="ov">${pic}</div>${captions && lab ? `<span>${esc(lab)}</span>` : ''}</button>`;
+  }).join('')}</div>`;
+}
+
 export function childRun(): string {
   const r = view.run!, s = activeProfile().settings, d: Detail = r.kind === 'routine' ? 0 : s.detail;
   const where = `<div class="where"><b>${s.captions ? esc(r.title) : ''}</b>${r.preview ? '<span class="tag">Preview</span>' : ''}</div>`;
-  const strip = (on: boolean) => s.schedule && on
+  if (r.phase === 'complete') return completeView(r, where);
+
+  const strip = s.schedule
     ? `<div class="strip" aria-label="Steps">${r.steps.map((st, i) => `<span class="s ${i < r.i ? 'past' : ''} ${i === r.i ? 'now' : ''}">${thumb(st, r)}</span>`).join('')}</div>`
     : `<div class="strip"></div>`;
-
-  if (r.phase === 'preview') {
-    const busyPick = r.busyOption
-      ? `<div class="row">${(['quiet', 'busy'] as const).map(v => `<button class="opt ${!!r.ctx.busy === (v === 'busy') ? 'picked' : ''}" style="min-width:200px" data-a="setBusy" data-v="${v}" aria-pressed="${!!r.ctx.busy === (v === 'busy')}"><div class="ov" style="height:110px">${svgWrap(BG('store', 1) + D.store(300, 350, false) + (v === 'busy' ? D.person(96, 350, 0.8) + D.person(506, 350, 0.8) + D.sound(540, 56) : ''))}</div><span>${v === 'busy' ? 'Busy store' : 'Quiet store'}</span></button>`).join('')}</div>`
-      : '';
-    return `<div class="child">${topbar(where)}<div class="strip"></div>
-      <div class="center fade"><h1>${s.captions ? 'What we will do' : ''}</h1>
-        <div class="strip" style="max-width:900px">${r.steps.map(st => `<span class="s past" style="width:120px">${thumb(st, r)}</span>`).join('')}</div>${busyPick}</div>
-      <div class="rail"><div><button class="btn" data-a="back">${ICON.back}<span class="lb">Back</span></button></div><div></div>
-        <div class="right"><button class="btn primary" data-a="next"><span>Start</span>${ICON.next}</button></div></div></div>`;
-  }
-  if (r.phase === 'complete') {
-    return `<div class="child">${topbar(where)}${strip(false)}
-      <div class="center fade"><h1>All done${s.captions ? ': ' + esc(r.title) : ''}.</h1>
-        <div class="strip" style="max-width:900px">${r.steps.map(st => `<span class="s past">${thumb(st, r)}</span>`).join('')}</div>
-        <div class="row"><button class="btn" data-a="again">${ICON.again}<span>Again</span></button><button class="btn" data-a="home">${ICON.home}<span>Home</span></button><button class="btn primary" data-a="finish"><span>Finished</span></button></div></div>
-      <div class="rail"></div></div>`;
-  }
-  if (r.phase === 'finished') {
-    return `<div class="child">${topbar(where)}<div class="strip"></div><div class="center fade"><div class="bigpic">${svgWrap(D.doneBox())}</div><h1>Finished.</h1><button class="btn" data-a="home">${ICON.home}<span>Home</span></button></div><div class="rail"></div></div>`;
-  }
-
-  const st = currentStep(r)!, cap = captionFor(st, r), chooser = st.act === 'choose' || st.act === 'aac';
+  const st = currentStep(r)!, cap = captionFor(st, r);
   const scene = svgWrap(sceneFor(st, r, d));
   const picEl = st.act === 'tap' && !r.done
     ? `<button class="pic fade" data-a="tap" aria-label="${esc(cap)} Tap the picture.">${scene}</button>`
     : `<div class="pic fade">${scene}</div>`;
   let opts = '';
-  if (st.act === 'choose') {
-    const pool = choiceOptions(st, s.choices);
-    opts = `<div class="opts" style="--n:${pool.length}">${pool.map(v => {
-      const pic = st.photoOpts ? `<img src="${safeImg(st.photoOpts[v])}" alt="">` : svgWrap(st.optDraw!(v));
-      const picked = r.done && ((st.store && r.ctx[st.store] === v) || st.target === v);
-      const cls = picked ? 'picked' : r.wrong && st.target === v ? 'hint' : '';
-      const lab = st.optLabel ? st.optLabel(v) : '';
-      return `<button class="opt ${cls}" data-a="pick" data-v="${esc(v)}" aria-label="${esc(lab || 'picture')}"><div class="ov">${pic}</div>${s.captions && lab ? `<span>${esc(lab)}</span>` : ''}</button>`;
-    }).join('')}</div>`;
-  }
+  if (st.act === 'choose' || st.act === 'collect') opts = optionButtons(st, r, s.captions);
   if (st.act === 'aac') {
     opts = `<div class="opts" style="--n:4">${AAC_KEYS.map(k => `<button class="opt ${r.ctx.choice === k ? 'picked' : ''}" data-a="pickAac" data-v="${k}" aria-label="${AAC[k].label}"><div class="ov">${aacPic(k)}</div>${s.captions ? `<span>${AAC[k].label}</span>` : ''}</button>`).join('')}</div>`;
   }
+  const lesson = r.kind === 'lesson' ? lessonById(r.id) : undefined;
+  const hud = st.hud && lesson?.hud ? lesson.hud(r.ctx, r.last) : '';
   const assistTag = r.kind === 'lesson' && st.assist && r.assist ? `<span class="chip">With a grown-up</span>` : '';
-  return `<div class="child">${topbar(where)}${strip(true)}
-    <div class="stage ${chooser ? 'choose' : ''}"><div class="picwrap">${picEl}</div>
-      ${assistTag}<p class="cap ${r.wrong ? 'soft' : ''}" aria-live="polite">${s.captions ? esc(cap) : ''}</p>${opts}</div>
+  const capEl = `<p class="cap ${r.wrong != null ? 'soft' : ''}" aria-live="polite">${s.captions ? esc(cap) : ''}</p>`;
+  // Collect steps put the scene (what has been picked so far) beside the things to pick.
+  const stage = st.act === 'collect'
+    ? `<div class="stage collect"><div class="col-left"><div class="picwrap">${picEl}</div>${capEl}${hud}</div><div class="col-right">${opts}</div></div>`
+    : `<div class="stage ${st.act === 'choose' || st.act === 'aac' ? 'choose' : ''}"><div class="picwrap">${picEl}</div>${assistTag}${capEl}${hud}${opts}</div>`;
+  return `<div class="child">${topbar(where)}${strip}
+    ${stage}
     <div class="rail"><div><button class="btn" data-a="back">${ICON.back}<span class="lb">Back</span></button></div>
       <div class="mid"><button class="btn" data-a="repeat" aria-label="Do this step again">${ICON.again}<span class="lb">Again</span></button>${s.narration ? `<button class="btn" data-a="hear" aria-label="Hear it">${ICON.hear}</button>` : ''}</div>
       <div class="right"><button class="btn primary" data-a="next"><span class="lb">Next</span>${ICON.next}</button></div></div></div>`;
@@ -135,7 +152,7 @@ export function overlayView(): string {
       <div class="aacgrid">${AAC_KEYS.map(k => `<button class="aac" data-a="aac" data-v="${k}"><div class="av">${aacPic(k)}</div><b>${AAC[k].label}</b></button>`).join('')}</div>
       <button class="btn" data-a="closeOverlay">${ICON.back}<span>Back to activity</span></button></div></div>`;
   }
-  const inRun = view.screen === 'run' && !!view.run && view.run.phase !== 'finished';
+  const inRun = view.screen === 'run' && !!view.run && view.run.phase === 'step';
   const back = `<button class="btn primary" data-a="closeOverlay"><span>${inRun ? 'Back to activity' : 'Okay'}</span></button>`;
   const allDone = (label: string) => (inRun ? `<button class="btn" data-a="allDone"><span>${label}</span></button>` : '');
   const screens: Record<typeof o, [string, string, string]> = {

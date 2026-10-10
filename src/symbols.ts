@@ -106,7 +106,44 @@ export const D = {
       yellow: `<g transform="translate(${x} ${y})"><path class="l cy" d="M-80 -20 q80 90 160 0 q-80 40 -160 0z"/></g>`,
       green: `<g transform="translate(${x} ${y})"><path class="l cg" d="M-70 30 q10 -100 120 -90 q-10 110 -120 90z"/><path class="l n" d="M-60 22 q50 -40 100 -72"/></g>`,
     })[c],
-  item: (v: string | undefined, x: number, y: number, s = 1) => (v === 'bread' ? D.bread(x, y, s) : v === 'milk' ? D.milk(x, y, s) : D.apple(x, y, s)),
+  banana: (x: number, y: number, s = 1) =>
+    `<g transform="translate(${x} ${y}) scale(${s})"><path class="l cy" d="M-56 -14 q56 70 112 0 q-56 34 -112 0z"/><path class="l n" d="M50 -10 l10 -14"/></g>`,
+  carrot: (x: number, y: number, s = 1) =>
+    `<g transform="translate(${x} ${y}) scale(${s})"><path class="l co" d="M-16 -30 h32 l-16 74z"/><path class="l cg" d="M-4 -30 q-14 -22 -4 -30 q10 10 4 30z M4 -30 q14 -22 4 -30 q-10 10 -4 30z"/><path class="l n" d="M-8 -6 h8 M-4 12 h6"/></g>`,
+  cheese: (x: number, y: number, s = 1) =>
+    `<g transform="translate(${x} ${y}) scale(${s})"><path class="l cy" d="M-52 30 v-40 l104 -22 v62z"/><circle class="f2" cx="-20" cy="6" r="8"/><circle class="f2" cx="20" cy="-6" r="6"/><circle class="f2" cx="30" cy="16" r="5"/></g>`,
+  eggs: (x: number, y: number, s = 1) =>
+    `<g transform="translate(${x} ${y}) scale(${s})"><ellipse class="l f" cx="-30" cy="-6" rx="18" ry="24"/><ellipse class="l f" cx="0" cy="-10" rx="18" ry="24"/><ellipse class="l f" cx="30" cy="-6" rx="18" ry="24"/><rect class="l f2" x="-56" y="0" width="112" height="34" rx="6"/></g>`,
+  cereal: (x: number, y: number, s = 1) =>
+    `<g transform="translate(${x} ${y}) scale(${s})"><rect class="l cy" x="-36" y="-52" width="72" height="100" rx="4"/><path class="l f" d="M-22 8 h44 q0 24 -22 24 q-22 0 -22 -24z"/><circle class="l wood" cx="-8" cy="2" r="6"/><circle class="l wood" cx="8" cy="0" r="6"/></g>`,
+  item: (v: string | undefined, x: number, y: number, s = 1): string => {
+    const f = ({ bread: D.bread, milk: D.milk, banana: D.banana, carrot: D.carrot, cheese: D.cheese, eggs: D.eggs, cereal: D.cereal } as Record<string, typeof D.apple>)[v ?? ''];
+    return (f ?? D.apple)(x, y, s);
+  },
+  /** A painted wooden block standing on y. */
+  block: (x: number, y: number, color: string, w = 120, h = 56) => {
+    const cls = ({ wood: 'wood', red: 'cr', blue: 'cb', yellow: 'cy', green: 'cg' } as Record<string, string>)[color] ?? 'wood';
+    return `<g><rect class="l ${cls}" x="${x - w / 2}" y="${y - h}" width="${w}" height="${h}" rx="6"/><path class="grain" d="M${x - w / 2 + 14} ${y - h / 2 - 4} q${w / 4} -8 ${w / 2 - 14} 0 t${w / 2 - 14} 2 M${x - w / 2 + 24} ${y - 14} q${w / 4} 6 ${w / 2} 0"/></g>`;
+  },
+  /** Blocks stacked from the floor (y=350) upward. */
+  tower: (x: number, blocks: string[], floor = 350, w = 120, h = 56) => blocks.map((c, i) => D.block(x, floor - i * h, c, w, h)).join(''),
+  spoon: (x: number, y: number, s = 1) =>
+    `<g transform="translate(${x} ${y}) scale(${s}) rotate(-30)"><ellipse class="l f2" cx="0" cy="-60" rx="26" ry="36"/><rect class="l f2" x="-8" y="-26" width="16" height="110" rx="8"/></g>`,
+  comb: (x: number, y: number, s = 1) =>
+    `<g transform="translate(${x} ${y}) scale(${s})"><rect class="l soft" x="-100" y="-30" width="200" height="26" rx="8"/>${[-84, -64, -44, -24, -4, 16, 36, 56, 76].map(a => `<line class="l" x1="${a}" y1="-4" x2="${a}" y2="30"/>`).join('')}</g>`,
+  shape: (k: string, x: number, y: number, r = 44) =>
+    k === 'star' ? D.star(x, y, r)
+    : k === 'circle' ? `<circle class="l cb" cx="${x}" cy="${y}" r="${r * 0.8}"/>`
+    : k === 'triangle' ? `<path class="l cg" d="M${x} ${y - r} L${x + r} ${y + r * 0.75} H${x - r}z"/>`
+    : `<rect class="l cr" x="${x - r * 0.75}" y="${y - r * 0.75}" width="${r * 1.5}" height="${r * 1.5}" rx="4"/>`,
+  /** One cubby with a shape label. */
+  cubbyMark: (k: string) => `<rect class="l f2" x="190" y="90" width="220" height="230" rx="6"/><rect class="l f" x="250" y="110" width="100" height="70" rx="6"/>${D.shape(k, 300, 145, 26)}`,
+  paperBag: (x: number, y: number) => `<g><path class="l wood" d="M${x - 80} ${y} v-150 h160 v150z"/><path class="l n" d="M${x - 80} ${y - 150} l20 -16 h120 l20 16"/></g>`,
+  cardReader: (x: number, y: number, paid: boolean) =>
+    `<g><rect class="l f2" x="${x - 60}" y="${y - 150}" width="120" height="150" rx="14"/><rect class="l f" x="${x - 42}" y="${y - 132}" width="84" height="52" rx="6"/>${paid ? `<path class="mark" d="M${x - 18} ${y - 106} l14 14 l26 -28"/>` : ''}</g>`,
+  card: (x: number, y: number) => `<g><rect class="l cb" x="${x - 60}" y="${y - 38}" width="120" height="76" rx="10"/><rect class="l f" x="${x - 46}" y="${y - 18}" width="26" height="20" rx="3"/></g>`,
+  listPaper: (items: string[]) =>
+    `<g><path class="l f" d="M200 40 h200 v320 h-200z"/>${items.map((v, i) => `${D.item(v, 260, 100 + i * 100, 0.7)}<line class="l faint" x1="310" y1="${100 + i * 100}" x2="370" y2="${100 + i * 100}"/>`).join('')}</g>`,
   noSign: () =>
     `<circle class="l n" style="stroke-width:24px" cx="300" cy="200" r="120"/><line class="l" style="stroke-width:24px" x1="215" y1="285" x2="385" y2="115"/>`,
   doneBox: () => `<rect class="l f2" x="180" y="110" width="240" height="190" rx="18"/><path class="l n" style="stroke-width:24px" d="M236 206 l46 46 l86 -100"/>`,
@@ -138,7 +175,7 @@ export const svgWrap = (inner: string, cls = '') => `<svg viewBox="0 0 600 400" 
 
 /** A drawing as a standalone image (fixed light palette), used where a photo would go. */
 export function svgImg(inner: string): string {
-  const css = `.l{stroke:#24343B;stroke-width:5px;stroke-linejoin:round;stroke-linecap:round}.f{fill:#fff}.f2{fill:#DDE4E6}.soft{fill:#C9D9DC}.n{fill:none}.wood{fill:#CFAE84}.cy{fill:#E6B52A}.cb{fill:#2E60B0}.bag{fill:#2E60B0}.mark{stroke:#23626C;stroke-width:7px;fill:none;stroke-linecap:round}.faint{opacity:.35}.board{fill:#D2E4E5}.belt{fill:#24343B;opacity:.5}.cr{fill:#C63F38}.cg{fill:#3C874D}`;
+  const css = `.l{stroke:#24343B;stroke-width:5px;stroke-linejoin:round;stroke-linecap:round}.f{fill:#fff}.f2{fill:#DDE4E6}.soft{fill:#C9D9DC}.n{fill:none}.wood{fill:#CFAE84}.cy{fill:#E6B52A}.cb{fill:#2E60B0}.bag{fill:#2E60B0}.mark{stroke:#23626C;stroke-width:7px;fill:none;stroke-linecap:round}.faint{opacity:.35}.board{fill:#D2E4E5}.belt{fill:#24343B;opacity:.5}.cr{fill:#C63F38}.cg{fill:#3C874D}.co{fill:#E07A2E}.grain{fill:none;stroke:#24343B;stroke-width:2px;opacity:.3}`;
   const s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400"><style>${css}</style><rect width="600" height="400" fill="#EFEBE2"/>${D.floor()}${inner}</svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
 }

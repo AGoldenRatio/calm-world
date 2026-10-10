@@ -2,7 +2,7 @@
    and can be exported or deleted in one action. Nothing is sent anywhere. */
 import { LESSONS, lessonById } from './content/lessons';
 import { D, svgImg } from './symbols';
-import type { EventType, LessonCfg, Profile, Settings, Store } from './types';
+import type { EventType, LessonCfg, Level, Profile, Settings, Store } from './types';
 
 export const STORAGE_KEY = 'calmworld.v1';
 
@@ -11,27 +11,27 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 /** Every setting defaults to the quietest option. */
 export const DEFAULT_SETTINGS: Settings = {
   narration: false, rate: 0.9, envAudio: false, volume: 0.4, motion: 'off', detail: 0, contrast: 'standard',
-  choices: 2, captions: true, schedule: true, bigTargets: true, tracking: true,
+  autoNext: true, captions: true, schedule: true, bigTargets: true, tracking: true,
 };
 
-export function lessonConfig(): LessonCfg[] {
+export function lessonConfig(level: Level = 1): LessonCfg[] {
   return LESSONS.map(l => ({
-    id: l.id, on: true, steps: null,
+    id: l.id, on: true, steps: null, level,
     opts: l.id === 'teeth' ? { pasteAssist: true } : l.id === 'grocery' ? { busy: false } : {},
   }));
 }
 
-export function makeProfile(nickname: string, over: Partial<Settings> = {}, example = false): Profile {
-  return { id: uid(), nickname, example, settings: { ...DEFAULT_SETTINGS, ...over }, lessons: lessonConfig(), aac: {} };
+export function makeProfile(nickname: string, over: Partial<Settings> = {}, example = false, level: Level = 1): Profile {
+  return { id: uid(), nickname, example, settings: { ...DEFAULT_SETTINGS, ...over }, lessons: lessonConfig(level), aac: {} };
 }
 
 /** The three learner scenarios from the product plan, plus a little example history. */
 export function seed(now = Date.now()): Store {
-  const maple = makeProfile('Maple', { detail: 0, choices: 2, narration: false, motion: 'off' }, true);
+  const maple = makeProfile('Maple', { detail: 0, narration: false, motion: 'off' }, true, 1);
   maple.lessons.find(x => x.id === 'hands')!.steps = [...lessonById('hands')!.short!];
-  const river = makeProfile('River', { detail: 1, choices: 3, narration: true, motion: 'gentle' }, true);
+  const river = makeProfile('River', { detail: 1, narration: true, motion: 'gentle' }, true, 2);
   river.lessons.find(x => x.id === 'grocery')!.opts.busy = true;
-  const wren = makeProfile('Wren', { detail: 2, choices: 4, captions: false, narration: true, rate: 0.8, contrast: 'high' }, true);
+  const wren = makeProfile('Wren', { detail: 2, captions: false, narration: true, rate: 0.8, contrast: 'high' }, true, 3);
   const day = 864e5;
   return {
     v: 1, activeProfileId: maple.id, profiles: [maple, river, wren],
@@ -65,11 +65,16 @@ export function emptyStore(): Store {
 }
 
 /** Fill in anything a stored profile is missing, e.g. a lesson added in a later version. */
-function migrate(s: Store): Store {
+export function migrate(s: Store): Store {
   for (const p of s.profiles) {
-    p.settings = { ...DEFAULT_SETTINGS, ...p.settings };
+    // "Choices at once" became per-activity difficulty: 2 choices = Easy, 3 = Medium, 4 = Hard.
+    const old = p.settings as Partial<Settings> & { choices?: number };
+    const level = Math.min(3, Math.max(1, (old.choices ?? 2) - 1)) as Level;
+    delete old.choices;
+    p.settings = { ...DEFAULT_SETTINGS, ...old };
     p.aac = p.aac || {};
-    for (const cfg of lessonConfig()) if (!p.lessons.some(x => x.id === cfg.id)) p.lessons.push(cfg);
+    for (const cfg of p.lessons) cfg.level = cfg.level ?? level;
+    for (const cfg of lessonConfig(level)) if (!p.lessons.some(x => x.id === cfg.id)) p.lessons.push(cfg);
     p.lessons = p.lessons.filter(x => lessonById(x.id));
   }
   return s;
